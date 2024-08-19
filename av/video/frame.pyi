@@ -63,3 +63,11 @@ class VideoFrame(Frame):
     ) -> VideoFrame: ...
     @staticmethod
     def from_ndarray(array: _SupportedNDarray, format: str = "rgb24") -> VideoFrame: ...
+    @staticmethod
+    def from_raw_bytes(
+        data: bytes,
+        width: int,
+        height: int,
+        format="rgba",
+        flip_vertical=False,
+    ) -> VideoFrame: ...
