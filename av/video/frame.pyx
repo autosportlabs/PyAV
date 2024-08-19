@@ -57,6 +57,35 @@ cdef copy_array_to_plane(array, VideoPlane plane, unsigned int bytes_per_pixel):
         o_pos += o_stride
 
 
+cdef copy_bytes_to_plane(img_bytes, VideoPlane plane, unsigned int bytes_per_pixel, bint flip_vertical):
+    cdef const uint8_t[:] i_buf = img_bytes
+    cdef size_t i_pos = 0
+    cdef size_t i_stride = plane.width * bytes_per_pixel
+    cdef size_t i_size = plane.height * i_stride
+
+    cdef uint8_t[:] o_buf = plane
+    cdef size_t o_pos = 0
+    cdef size_t o_stride = abs(plane.line_size)
+
+    cdef int start_row = plane.height - 1 if flip_vertical else 0
+    cdef int end_row = -1 if flip_vertical else plane.height
+    cdef int step = -1 if flip_vertical else 1
+
+    for row in range(start_row, end_row, step):
+        i_pos = row * i_stride
+        o_buf[o_pos:o_pos + i_stride] = i_buf[i_pos:i_pos + i_stride]
+        o_pos += o_stride
+
+    # cdef int current_row = start_row
+    # cdef int row_limit = end_row
+
+    # while current_row != row_limit:
+    #     i_pos = current_row * i_stride
+    #     o_buf[o_pos:o_pos + i_stride] = i_buf[i_pos:i_pos + i_stride]
+    #     o_pos += o_stride
+    #     current_row += step
+
+
 cdef useful_array(VideoPlane plane, unsigned int bytes_per_pixel=1, str dtype="uint8"):
     """
     Return the useful part of the VideoPlane as a single dimensional array.
@@ -571,29 +600,8 @@ cdef class VideoFrame(Frame):
 
         return frame
 
-    def from_raw_bytes(buffer: bytes, width: int, height: int, format="rgba", flip_vertical=False):
-        cdef VideoFrame frame = VideoFrame(width, height, format)
-        cdef VideoPlane plane = frame.planes[0]
-
-        cdef int bytes_per_pixel = 4
-
-        cdef bytes imgbytes = buffer
-        cdef const uint8_t[:] i_buf = imgbytes
-        cdef size_t i_stride = width * bytes_per_pixel
-        cdef size_t i_size = height * i_stride
-
-        cdef uint8_t[:] o_buf = plane
-        cdef size_t o_stride = abs(plane.line_size)
-
-        cdef size_t o_pos = 0
-
-        cdef int start_row = height - 1 if flip_vertical else 0
-        cdef int end_row = -1 if flip_vertical else height
-        cdef int step = -1 if flip_vertical else 1
-
-        for row in range(start_row, end_row, step):
-            i_pos = row * i_stride
-            o_buf[o_pos:o_pos + i_stride] = i_buf[i_pos:i_pos + i_stride]
-            o_pos += o_stride
-
+    def from_raw_bytes(img_bytes: bytes, width: int, height: int, format="rgba", flip_vertical=False):
+        frame = VideoFrame(width, height, format)
+        if format == "rgba":
+            copy_bytes_to_plane(img_bytes, frame.planes[0], 4, flip_vertical)
         return frame
